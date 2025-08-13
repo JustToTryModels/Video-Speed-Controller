@@ -88,5 +88,24 @@ if uploaded_file and speed_factor > 0:
         else:
             st.success(f"✅ Done! Speed: {speed_factor:.2f}×")
             st.video(output_path)
+
+            # Inject CSS to make the download button red
+            st.markdown(
+                """
+                <style>
+                div.stDownloadButton > button {
+                    background-color: red !important;
+                    color: white !important;
+                    border-color: darkred !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
             with open(output_path, "rb") as out_file:
-                st.download_button("📥 Download Processed Video", out_file, file_name=output_filename)
+                st.download_button(
+                    "📥 Download Processed Video", 
+                    out_file, 
+                    file_name=output_filename
+                )
