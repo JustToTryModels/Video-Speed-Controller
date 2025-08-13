@@ -6,7 +6,7 @@ from pathlib import Path
 
 st.set_page_config(page_title="🎬 Live Video Speed Controller", page_icon="⚡", layout="centered")
 st.title("⚡ Live Video Speed Controller")
-st.markdown("🎛 Play with the slider, or type an exact speed. Preview updates automatically after quick processing.")
+st.markdown("🎛 Drag the slider or type a value. Live preview updates as you adjust.")
 
 # ==== Helper: atempo chaining ====
 def atempo_chain(sf):
@@ -27,20 +27,21 @@ uploaded_file = st.file_uploader(
 )
 
 # ==== Speed Controls ====
+min_speed, max_speed = 0.1, 8.0
+
 col1, col2 = st.columns(2)
 with col1:
-    speed_slider = st.slider("Speed factor (slider)", 0.25, 4.0, 1.0, 0.05)
+    speed_slider = st.slider("Speed factor (slider)", min_speed, max_speed, 1.0, 0.05)
 with col2:
-    speed_manual = st.number_input("Speed factor (manual)", min_value=0.25, max_value=4.0, value=speed_slider, step=0.01, format="%.2f")
+    speed_manual = st.number_input("Speed factor (manual)", min_value=min_speed, max_value=max_speed, value=speed_slider, step=0.01, format="%.2f")
 
-# Sync slider and manual input preference
-# If manual differs, we use that, else use slider
+# Decide which one to use: manual takes precedence if changed
 if abs(speed_manual - speed_slider) > 1e-6:
     speed_factor = speed_manual
 else:
     speed_factor = speed_slider
 
-# ==== Process when file is uploaded and speed changes ====
+# ==== Process whenever file uploaded and speed changes ====
 if uploaded_file and speed_factor > 0:
     with st.spinner(f"⏳ Processing at {speed_factor:.2f}x speed..."):
         tmp_dir = tempfile.mkdtemp()
@@ -52,7 +53,7 @@ if uploaded_file and speed_factor > 0:
         with open(input_path, "wb") as f:
             f.write(uploaded_file.read())
 
-        # Build FFmpeg command
+        # Build FFmpeg filters
         atempo_filters = atempo_chain(speed_factor)
         ffmpeg_cmd = [
             "ffmpeg", "-i", input_path,
