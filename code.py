@@ -6,9 +6,9 @@ from pathlib import Path
 
 st.set_page_config(page_title="🎬 Video Speed Adjuster", page_icon="⚡", layout="centered")
 st.title("🎬 Video Speed Adjuster")
-st.markdown("Upload a video, pick a speed, and we’ll warp time for you — without bending spacetime laws too much.")
+st.markdown("Upload a video, tweak the speed, watch it instantly, and download when happy.")
 
-# ==== Helper Function: atempo chaining ====
+# ==== Helper: atempo chaining ====
 def atempo_chain(sf):
     tempos = []
     while sf > 2.0:
@@ -22,19 +22,18 @@ def atempo_chain(sf):
 
 # ==== File Upload ====
 uploaded_file = st.file_uploader("📤 Upload your video file", type=["mp4", "mov", "avi", "mkv", "webm"])
-speed_factor = st.number_input("Speed factor (e.g. 2 = 2x faster, 0.5 = half speed)", value=1.0, step=0.1, format="%.2f")
+speed_factor = st.slider("Speed factor", 0.25, 4.0, 1.0, 0.05)
 
 if uploaded_file and speed_factor > 0:
     if st.button("🚀 Process Video"):
         with st.spinner("Processing video with FFmpeg..."):
 
-            # Create temp input & output file paths
             tmp_dir = tempfile.mkdtemp()
             input_path = os.path.join(tmp_dir, uploaded_file.name)
             ext = Path(uploaded_file.name).suffix
             output_path = os.path.join(tmp_dir, f"output{ext}")
 
-            # Save uploaded file to temp path
+            # Save uploaded file
             with open(input_path, "wb") as f:
                 f.write(uploaded_file.read())
 
@@ -50,12 +49,17 @@ if uploaded_file and speed_factor > 0:
             ]
 
             # Run FFmpeg
-            process = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             if process.returncode != 0:
                 st.error("❌ FFmpeg failed to process the video.")
-                st.text(process.stderr.decode())
+                st.code(process.stderr)
             else:
+                st.success("✅ Processing complete!")
+
+                # Preview Video
+                st.video(output_path)
+
+                # Download Button
                 with open(output_path, "rb") as out_file:
-                    st.success("✅ Processing complete!")
                     st.download_button("📥 Download Processed Video", out_file, file_name=f"processed{ext}")
