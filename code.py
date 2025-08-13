@@ -4,9 +4,9 @@ import os
 import tempfile
 from pathlib import Path
 
-st.set_page_config(page_title="🎬 Video Speed Live Preview", page_icon="⚡", layout="centered")
-st.title("🎬 Video Speed Controller – Live Preview Edition")
-st.markdown("🎛 Slide the speed control & preview updates instantly after processing.")
+st.set_page_config(page_title="🎬 Live Video Speed Controller", page_icon="⚡", layout="centered")
+st.title("⚡ Live Video Speed Controller")
+st.markdown("🎛 Play with the slider, or type an exact speed. Preview updates automatically after quick processing.")
 
 # ==== Helper: atempo chaining ====
 def atempo_chain(sf):
@@ -21,12 +21,28 @@ def atempo_chain(sf):
     return ",".join(tempos)
 
 # ==== File Upload ====
-uploaded_file = st.file_uploader("📤 Upload video", type=["mp4", "mov", "avi", "mkv", "webm"])
-speed_factor = st.slider("Speed factor", 0.25, 4.0, 1.0, 0.05)
+uploaded_file = st.file_uploader(
+    "📤 Upload video", 
+    type=["mp4", "mov", "avi", "mkv", "webm"]
+)
 
-# ==== Process live when slider changes ====
+# ==== Speed Controls ====
+col1, col2 = st.columns(2)
+with col1:
+    speed_slider = st.slider("Speed factor (slider)", 0.25, 4.0, 1.0, 0.05)
+with col2:
+    speed_manual = st.number_input("Speed factor (manual)", min_value=0.25, max_value=4.0, value=speed_slider, step=0.01, format="%.2f")
+
+# Sync slider and manual input preference
+# If manual differs, we use that, else use slider
+if abs(speed_manual - speed_slider) > 1e-6:
+    speed_factor = speed_manual
+else:
+    speed_factor = speed_slider
+
+# ==== Process when file is uploaded and speed changes ====
 if uploaded_file and speed_factor > 0:
-    with st.spinner("Processing video... hang tight!"):
+    with st.spinner(f"⏳ Processing at {speed_factor:.2f}x speed..."):
         tmp_dir = tempfile.mkdtemp()
         input_path = os.path.join(tmp_dir, uploaded_file.name)
         ext = Path(uploaded_file.name).suffix
@@ -51,9 +67,10 @@ if uploaded_file and speed_factor > 0:
         process = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         if process.returncode != 0:
-            st.error("❌ FFmpeg failed!")
+            st.error("❌ FFmpeg failed to process the video.")
             st.code(process.stderr)
         else:
+            st.success(f"✅ Done! Speed: {speed_factor:.2f}x")
             st.video(output_path)
             with open(output_path, "rb") as out_file:
                 st.download_button("📥 Download this version", out_file, file_name=f"processed{ext}")
