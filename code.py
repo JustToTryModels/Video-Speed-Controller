@@ -6,7 +6,10 @@ from pathlib import Path
 
 st.set_page_config(page_title="🎬 Live Video Speed Controller", page_icon="⚡", layout="centered")
 st.title("⚡ Live Video Speed Controller")
-st.markdown("🎛 Drag the slider or type a value. Live preview updates as you adjust.")
+st.markdown(
+    "🎛 Upload a video, adjust the speed (0.1× to 8×), "
+    "and preview/download your processed file with the speed tagged in the filename."
+)
 
 # ==== Helper: atempo chaining ====
 def atempo_chain(sf):
@@ -22,7 +25,7 @@ def atempo_chain(sf):
 
 # ==== File Upload ====
 uploaded_file = st.file_uploader(
-    "📤 Upload video", 
+    "📤 Upload video",
     type=["mp4", "mov", "avi", "mkv", "webm"]
 )
 
@@ -33,21 +36,33 @@ col1, col2 = st.columns(2)
 with col1:
     speed_slider = st.slider("Speed factor (slider)", min_speed, max_speed, 1.0, 0.05)
 with col2:
-    speed_manual = st.number_input("Speed factor (manual)", min_value=min_speed, max_value=max_speed, value=speed_slider, step=0.01, format="%.2f")
+    speed_manual = st.number_input(
+        "Speed factor (manual)",
+        min_value=min_speed, max_value=max_speed,
+        value=speed_slider, step=0.01, format="%.2f"
+    )
 
-# Decide which one to use: manual takes precedence if changed
+# Determine which input to use
 if abs(speed_manual - speed_slider) > 1e-6:
     speed_factor = speed_manual
 else:
     speed_factor = speed_slider
 
-# ==== Process whenever file uploaded and speed changes ====
+# ==== Process the file and show live preview ====
 if uploaded_file and speed_factor > 0:
-    with st.spinner(f"⏳ Processing at {speed_factor:.2f}x speed..."):
+    with st.spinner(f"⏳ Processing at {speed_factor:.2f}× speed..."):
         tmp_dir = tempfile.mkdtemp()
-        input_path = os.path.join(tmp_dir, uploaded_file.name)
-        ext = Path(uploaded_file.name).suffix
-        output_path = os.path.join(tmp_dir, f"output{ext}")
+        
+        # Original file info
+        original_filename = uploaded_file.name
+        input_path = os.path.join(tmp_dir, original_filename)
+        base_name = Path(original_filename).stem
+        ext = Path(original_filename).suffix
+        
+        # Output filename: original + .<speed>x + extension
+        safe_speed_str = f"{speed_factor:.2f}".rstrip("0").rstrip(".")  # cleaner string
+        output_filename = f"{base_name}.{safe_speed_str}x{ext}"
+        output_path = os.path.join(tmp_dir, output_filename)
 
         # Save uploaded file
         with open(input_path, "wb") as f:
@@ -71,7 +86,7 @@ if uploaded_file and speed_factor > 0:
             st.error("❌ FFmpeg failed to process the video.")
             st.code(process.stderr)
         else:
-            st.success(f"✅ Done! Speed: {speed_factor:.2f}x")
+            st.success(f"✅ Done! Speed: {speed_factor:.2f}×")
             st.video(output_path)
             with open(output_path, "rb") as out_file:
-                st.download_button("📥 Download this version", out_file, file_name=f"processed{ext}")
+                st.download_button("📥 Download Processed Video", out_file, file_name=output_filename)
