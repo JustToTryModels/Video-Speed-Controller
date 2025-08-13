@@ -52,13 +52,13 @@ else:
 if uploaded_file and speed_factor > 0:
     with st.spinner(f"⏳ Processing at {speed_factor:.2f}× speed..."):
         tmp_dir = tempfile.mkdtemp()
-
+        
         # Original file info
         original_filename = uploaded_file.name
         input_path = os.path.join(tmp_dir, original_filename)
         base_name = Path(original_filename).stem
         ext = Path(original_filename).suffix
-
+        
         # Output filename: original + .<speed>x + extension
         safe_speed_str = f"{speed_factor:.2f}".rstrip("0").rstrip(".")  # cleaner string
         output_filename = f"{base_name}.{safe_speed_str}x{ext}"
@@ -87,8 +87,9 @@ if uploaded_file and speed_factor > 0:
             st.code(process.stderr)
         else:
             st.success(f"✅ Done! Speed: {speed_factor:.2f}×")
+            st.video(output_path)
 
-            # Red styling for the download button
+            # Inject CSS to make the download button red
             st.markdown(
                 """
                 <style>
@@ -102,14 +103,9 @@ if uploaded_file and speed_factor > 0:
                 unsafe_allow_html=True,
             )
 
-            # Show video on the left, download button on the right
-            col_vid, col_btn = st.columns([4, 1])
-            with col_vid:
-                st.video(output_path)
-            with col_btn:
-                with open(output_path, "rb") as out_file:
-                    st.download_button(
-                        "📥 Download Processed Video",
-                        out_file,
-                        file_name=output_filename
-                    )
+            with open(output_path, "rb") as out_file:
+                st.download_button(
+                    "📥 Download Processed Video", 
+                    out_file, 
+                    file_name=output_filename
+                ) 
