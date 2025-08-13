@@ -1,8 +1,3 @@
-Of course! To position the download button on the right side, you can use `st.columns`. By creating two columns and placing the button in the second one, it will be pushed to the right.
-
-Here is the complete, corrected code. The change is located in the `else` block after the video is successfully processed.
-
-```python
 import streamlit as st
 import subprocess
 import os
@@ -127,39 +122,3 @@ if uploaded_file and speed_factor > 0:
                             file_name=output_filename,
                             mime="video/mp4" # Specify the MIME type for better browser handling
                         )
-```
-
-### Key Change Explained:
-
-The original code placed the `st.download_button` directly after the `st.video` player, causing it to appear on a new line and aligned to the left.
-
-The corrected code replaces this:
-
-```python
-# Original code
-with open(output_path, "rb") as out_file:
-    st.download_button(
-        "📥 Download Processed Video", 
-        out_file, 
-        file_name=output_filename
-    )
-```
-
-with this new structure using `st.columns`:
-
-```python
-# Corrected code
-_, btn_col = st.columns([3, 1])
-
-with open(output_path, "rb") as out_file:
-    with btn_col: # Place the button inside the second (right) column
-        st.download_button(
-            label="📥 Download Video",
-            data=out_file,
-            file_name=output_filename,
-            mime="video/mp4"
-        )
-```
-
--   `_, btn_col = st.columns([3, 1])`: This creates two columns. The first one takes up 3/4 of the available width, and the second takes up 1/4. We assign the first column to a placeholder `_` since we don't need to use it. The second column is assigned to `btn_col`.
--   `with btn_col:`: This context manager ensures that any Streamlit element created inside this block (in this case, the `st.download_button`) is rendered inside the right-hand column, achieving the desired alignment.
