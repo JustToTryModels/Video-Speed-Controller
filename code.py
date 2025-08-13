@@ -89,10 +89,14 @@ if uploaded_file and speed_factor > 0:
             st.success(f"✅ Done! Speed: {speed_factor:.2f}×")
             st.video(output_path)
 
-            # Inject CSS to make the download button red
+            # Inject CSS to make the download button red and aligned right
             st.markdown(
                 """
                 <style>
+                div.stDownloadButton {
+                    display: flex;
+                    justify-content: flex-end; /* pushes button to the right */
+                }
                 div.stDownloadButton > button {
                     background-color: red !important;
                     color: white !important;
