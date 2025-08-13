@@ -13,10 +13,6 @@ st.markdown(
 
 # ==== Helper: atempo chaining ====
 def atempo_chain(sf):
-    """
-    Creates a chain of FFmpeg atempo filters to handle speed factors
-    outside the 0.5-2.0 range.
-    """
     tempos = []
     while sf > 2.0:
         tempos.append("atempo=2.0")
@@ -46,7 +42,7 @@ with col2:
         value=speed_slider, step=0.01, format="%.2f"
     )
 
-# Determine which input to use (prioritize manual input if changed)
+# Determine which input to use
 if abs(speed_manual - speed_slider) > 1e-6:
     speed_factor = speed_manual
 else:
@@ -55,70 +51,65 @@ else:
 # ==== Process the file and show live preview ====
 if uploaded_file and speed_factor > 0:
     with st.spinner(f"⏳ Processing at {speed_factor:.2f}× speed..."):
-        # Use a temporary directory that cleans up automatically
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            # Original file info
-            original_filename = uploaded_file.name
-            input_path = os.path.join(tmp_dir, original_filename)
-            base_name = Path(original_filename).stem
-            ext = Path(original_filename).suffix
+        tmp_dir = tempfile.mkdtemp()
 
-            # Output filename: original + .<speed>x + extension
-            safe_speed_str = f"{speed_factor:.2f}".rstrip("0").rstrip(".")  # cleaner string
-            output_filename = f"{base_name}.{safe_speed_str}x{ext}"
-            output_path = os.path.join(tmp_dir, output_filename)
+        # Original file info
+        original_filename = uploaded_file.name
+        input_path = os.path.join(tmp_dir, original_filename)
+        base_name = Path(original_filename).stem
+        ext = Path(original_filename).suffix
 
-            # Save uploaded file to the temporary directory
-            with open(input_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+        # Output filename: original + .<speed>x + extension
+        safe_speed_str = f"{speed_factor:.2f}".rstrip("0").rstrip(".")  # cleaner string
+        output_filename = f"{base_name}.{safe_speed_str}x{ext}"
+        output_path = os.path.join(tmp_dir, output_filename)
 
-            # Build FFmpeg filters
-            atempo_filters = atempo_chain(speed_factor)
-            ffmpeg_cmd = [
-                "ffmpeg", "-i", input_path,
-                "-vf", f"setpts={1/speed_factor}*PTS",
-                "-af", atempo_filters,
-                "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
-                "-c:a", "aac", "-b:a", "192k",
-                "-y", output_path
-            ]
+        # Save uploaded file
+        with open(input_path, "wb") as f:
+            f.write(uploaded_file.read())
 
-            # Run FFmpeg
-            process = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
+        # Build FFmpeg filters
+        atempo_filters = atempo_chain(speed_factor)
+        ffmpeg_cmd = [
+            "ffmpeg", "-i", input_path,
+            "-vf", f"setpts={1/speed_factor}*PTS",
+            "-af", atempo_filters,
+            "-c:v", "libx264", "-crf", "18", "-preset", "ultrafast",
+            "-c:a", "aac", "-b:a", "192k",
+            "-y", output_path
+        ]
 
-            if process.returncode != 0:
-                st.error("❌ FFmpeg failed to process the video.")
-                st.code(process.stderr, language="bash")
-            else:
-                st.success(f"✅ Done! Speed: {speed_factor:.2f}×")
+        # Run FFmpeg
+        process = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if process.returncode != 0:
+            st.error("❌ FFmpeg failed to process the video.")
+            st.code(process.stderr)
+        else:
+            st.success(f"✅ Done! Speed: {speed_factor:.2f}×")
+
+            # Red styling for the download button
+            st.markdown(
+                """
+                <style>
+                div.stDownloadButton > button {
+                    background-color: red !important;
+                    color: white !important;
+                    border-color: darkred !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # Show video on the left, download button on the right
+            col_vid, col_btn = st.columns([4, 1])
+            with col_vid:
                 st.video(output_path)
-
-                # Inject CSS to make the download button red
-                st.markdown(
-                    """
-                    <style>
-                    div.stDownloadButton > button {
-                        background-color: red !important;
-                        color: white !important;
-                        border-color: darkred !important;
-                    }
-                    </style>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-                # --- CORRECTED CODE: USE COLUMNS TO ALIGN BUTTON ---
-                # Create two columns, an empty one on the left and one for the button on the right.
-                # The ratio [3, 1] means the left column takes 3/4 of the space, pushing the
-                # right column (and the button inside it) to the far right.
-                _, btn_col = st.columns([3, 1])
-
+            with col_btn:
                 with open(output_path, "rb") as out_file:
-                    # Place the download button in the right-most column
-                    with btn_col:
-                        st.download_button(
-                            label="📥 Download Video",
-                            data=out_file,
-                            file_name=output_filename,
-                            mime="video/mp4" # Specify the MIME type for better browser handling
-                        )
+                    st.download_button(
+                        "📥 Download Processed Video",
+                        out_file,
+                        file_name=output_filename
+                    )
